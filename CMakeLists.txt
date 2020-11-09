@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.15)
+project(iobench-hpc)
+
+set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_CXX_STANDARD 14)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+set(CMAKE_C_FLAGS_DEBUG "-g -O0")
+set(CMAKE_C_FLAGS_RELEASE  "-O3")
+find_package(MPI REQUIRED)
+add_subdirectory(benchmark)
