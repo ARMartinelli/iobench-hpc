@@ -36,6 +36,11 @@ void write_to_file(int* matrix, int num_elements, const std::string& file_name, 
     close(fd); // close the file: would unlock if needed
 }
 
+bool exists_dir(const std::string &s) {
+    struct stat buffer;
+    return (stat (s.c_str(), &buffer) == 0);
+}
+
 int main(int argc, char** argv) {
     int rank, *array;
     MPI_Init(&argc, &argv);
@@ -48,7 +53,7 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (rank == 0) {
         std::string dir_name("dir_process_" + std::to_string(rank));
-        if (mkdir(dir_name.c_str(), 0775) == -1) {
+        if ((!exists_dir(dir_name) && mkdir(dir_name.c_str(), 0775) == -1)) {
             std::cout << "writer " << rank << " failed to create directory" << std::endl;
             MPI_Finalize();
             return 1;
