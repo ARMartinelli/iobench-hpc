@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <limits>
-#include <sys/stat.h>
 
 void read_from_file(int* array, int num_elements, std::string file_name, int rank) {
     struct flock lock;

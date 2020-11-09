@@ -55,7 +55,6 @@ int main(int argc, char** argv) {
     array = new int[num_elements];
     std::fill_n(array, num_elements, rank);
     std::string file_name(dir_name + "/output_file_" + std::to_string(rank) + ".txt");
-    std::cout << "filename " << file_name << std::endl;
     write_to_file(array, num_elements, file_name, rank);
     free(array);
     MPI_Finalize();
