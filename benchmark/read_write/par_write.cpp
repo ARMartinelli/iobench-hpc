@@ -44,12 +44,13 @@ bool exists_dir(const std::string &s) {
 int main(int argc, char** argv) {
     int rank, *array;
     MPI_Init(&argc, &argv);
-    if (argc != 2) {
-        std::cout << "input error: number of elements needed" << std::endl;
+    if (argc != 3) {
+        std::cout << "input error: number of files per writer and number of elements in each file needed" << std::endl;
         MPI_Finalize();
         return 1;
     }
-    const int num_elements = std::stoi(argv[1]);
+    const int num_files = std::stoi(argv[1]);
+    const int num_elements = std::stoi(argv[2]);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     std::string dir_name("dir_process_" + std::to_string(rank));
 
@@ -58,10 +59,13 @@ int main(int argc, char** argv) {
         MPI_Finalize();
         return 1;
     }
-    array = new int[num_elements];
-    std::fill_n(array, num_elements, rank);
-    std::string file_name(dir_name + "/output_file_" + std::to_string(rank) + ".txt");
-    write_to_file(array, num_elements, file_name, rank);
+    array = new int[num_files * num_elements];
+    std::string file_name;
+    std::fill_n(array, num_files * num_elements, rank);
+    for (int i = 0; i < num_files; ++i) {
+        file_name = dir_name + "/output_file_" + std::to_string(rank) + "_part" + std::to_string(i) + ".txt";
+        write_to_file(array + i * num_elements, num_elements, file_name, rank);
+    }
     free(array);
     MPI_Finalize();
     return 0;
