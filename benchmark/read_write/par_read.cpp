@@ -28,7 +28,7 @@ void read_from_file(int* array, int num_elements, std::string file_name, int ran
     close(fd);
 }
 
-void use_data(int* array, int num_elements, int rank, const std::string& dir_name) {
+void use_data(int* array, int num_elements, int rank) {
     int num = 0;
     for (int i = 0; i < num_elements; ++i) {
         if (num > std::numeric_limits<int>::max() - array[i]) {
@@ -36,7 +36,7 @@ void use_data(int* array, int num_elements, int rank, const std::string& dir_nam
         }
         num += array[i];
     }
-    std::ofstream output_file(dir_name + "/output_read_matrixes_" + std::to_string(rank) + ".txt");
+    std::ofstream output_file("output_read_matrixes_" + std::to_string(rank) + ".txt");
     output_file << "result of reader " << rank << ": " << num;
     output_file.close();
 }
@@ -84,10 +84,9 @@ int main(int argc, char** argv) {
             dir_name = ("./dir_process_" + std::to_string(writer_rank));
             std::string file_name_prefix(dir_name + "/output_file_" + std::to_string(writer_rank));
             file_name = file_name_prefix + "_part" + std::to_string((i + rank * num_files_per_reader) % num_files_per_writer) + ".txt";
-            std::cout << "reader " << rank << " reading file " << file_name << std::endl;
             read_from_file(array + i * num_elements, num_elements, file_name, rank);
         }
-        use_data(array, num_elements * num_files_per_reader, rank, dir_name);
+        use_data(array, num_elements * num_files_per_reader, rank);
     }
     else {
         writer_rank = get_writer_rank(rank, size, num_writers, num_files_per_writer);
@@ -96,9 +95,8 @@ int main(int argc, char** argv) {
         dir_name = ("./dir_process_" + std::to_string(writer_rank));
         std::string file_name_prefix(dir_name + "/output_file_" + std::to_string(writer_rank));
         file_name = file_name_prefix + "_part" + std::to_string(file_part_num) + ".txt";
-        std::cout << "reader " << rank << " reading file " << file_name << std::endl;
         read_from_file(array, num_elements, file_name, rank);
-        use_data(array, num_elements, rank, dir_name);
+        use_data(array, num_elements, rank);
     }
     free(array);
     MPI_Finalize();
