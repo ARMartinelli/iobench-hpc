@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/stat.h>
+#include "../../conf_file_reader/conf_file_reader.hpp"
 
 void write_to_file(int* matrix, int num_elements, const std::string& file_name, int rank) {
     struct flock lock;
@@ -42,31 +43,37 @@ bool exists_dir(const std::string &s) {
 }
 
 int main(int argc, char** argv) {
-    int rank, *array;
+    int rank, size, *array;
     MPI_Init(&argc, &argv);
-    if (argc != 3) {
-        std::cout << "input error: number of files per writer and number of elements in each file needed" << std::endl;
+    if (argc != 2) {
+        std::cout << "input error: configuration file needed" << std::endl;
         MPI_Finalize();
         return 1;
     }
-    const int num_files = std::stoi(argv[1]);
-    const int num_elements = std::stoi(argv[2]);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
     std::string dir_name("dir_process_" + std::to_string(rank));
-
     if (!exists_dir(dir_name) && mkdir(dir_name.c_str(), 0775) == -1) {
         std::cout << "writer " << rank << " failed to create directory" << std::endl;
         MPI_Finalize();
         return 1;
     }
-    array = new int[num_files * num_elements];
-    std::string file_name;
-    std::fill_n(array, num_files * num_elements, rank);
-    for (int i = 0; i < num_files; ++i) {
-        file_name = dir_name + "/output_file_" + std::to_string(rank) + "_part" + std::to_string(i) + ".txt";
-        write_to_file(array + i * num_elements, num_elements, file_name, rank);
+    const std::string file_path(argv[1]);
+    std::vector<int> conf;
+    bool res_conf = read_conf_file_writer(file_path, rank, size, conf);
+    if (!res_conf) {
+        MPI_Finalize();
+        return 1;
     }
-    free(array);
+    for (int i = 0; i < conf.size(); ++i) {
+        int num_elements = conf[i];
+        array = new int[num_elements];
+        std::string file_name;
+        std::fill_n(array, num_elements, rank + 1);
+        file_name = dir_name + "/output_writer_" + std::to_string(rank) + "_part" + std::to_string(i) + ".txt";
+        write_to_file(array, num_elements, file_name, rank);
+        free(array);
+    }
     MPI_Finalize();
     return 0;
 }

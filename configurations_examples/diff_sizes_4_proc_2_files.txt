@@ -1,0 +1,26 @@
+writer 0:
+    1000
+    2000
+writer 1:
+    1000
+    2000
+writer 2:
+    1000
+    3000
+writer 3:
+    1000
+    4000
+reader 0:
+    writer 0:
+        file 0
+        file 1
+    writer 1:
+        file 0
+        file 1
+reader 1:
+    writer 2:
+        file 0
+        file 1
+    writer 3:
+        file 0
+        file 1
