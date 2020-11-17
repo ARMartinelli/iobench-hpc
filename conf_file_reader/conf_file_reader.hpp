@@ -223,7 +223,7 @@ bool read_conf_file_reader(const std::string& file_path, const int rank, const i
         myfile.close();
         if(num_readers != actual_num_readers) {
             std::cout << "conf file error: number of readers in configuration file and the actual number of readers launched are not the same" << std::endl;
-            res = false;
+            return false;
         }
     }
     else {

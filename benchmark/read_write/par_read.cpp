@@ -39,7 +39,10 @@ void use_data(int* array, int num_elements, int rank, int& sum) {
 }
 
 int main(int argc, char** argv) {
-    int rank, size, *array;
+    int rank, size;
+    std::string dir_name;
+    std::string file_name;
+    int writer_rank;
     MPI_Init(&argc, &argv);
     if (argc != 2) {
         std::cout << "input error: configuration file needed" << std::endl;
@@ -50,28 +53,26 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     std::unordered_map<int, std::unordered_map<int, int>> conf;
-    read_conf_file_reader(file_path, rank, size, conf);
-    std::string dir_name;
-    std::string file_name;
-    int writer_rank;
-    int sum = 0;
-    for (std::pair<int, std::unordered_map<int, int>> p1 : conf) {
-        for (std::pair<int, int> p2 : p1.second) {
-            writer_rank = p1.first;
-            int num_elements = p2.second;
-            int* array = new int[num_elements];
-            dir_name = ("./dir_process_" + std::to_string(writer_rank));
-            std::string file_name_prefix(dir_name + "/output_writer_" + std::to_string(writer_rank));
-            file_name = file_name_prefix + "_part" + std::to_string(p2.first) + ".txt";
-            std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
-            read_from_file(array, num_elements, file_name, rank);
-            use_data(array, num_elements, rank, sum);
-            free(array);
+    if (read_conf_file_reader(file_path, rank, size, conf)) {
+        int sum = 0;
+        for (std::pair<int, std::unordered_map<int, int>> p1 : conf) {
+            for (std::pair<int, int> p2 : p1.second) {
+                writer_rank = p1.first;
+                int num_elements = p2.second;
+                int *array = new int[num_elements];
+                dir_name = ("./dir_process_" + std::to_string(writer_rank));
+                std::string file_name_prefix(dir_name + "/output_writer_" + std::to_string(writer_rank));
+                file_name = file_name_prefix + "_part" + std::to_string(p2.first) + ".txt";
+                std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
+                read_from_file(array, num_elements, file_name, rank);
+                use_data(array, num_elements, rank, sum);
+                free(array);
+            }
         }
+        std::ofstream output_file("output_read_matrixes_" + std::to_string(rank) + ".txt");
+        output_file << "result of reader " << rank << ": " << sum << "\n";
+        output_file.close();
     }
-    std::ofstream output_file("output_read_matrixes_" + std::to_string(rank) + ".txt");
-    output_file << "result of reader " << rank << ": " << sum << "\n";
-    output_file.close();
     MPI_Finalize();
     return 0;
 }
