@@ -93,7 +93,6 @@ std::string read_conf_writers_for_readers(std::ifstream& myfile, std::unordered_
                                    int& num_line) {
     std::string line;
     int writer_rank = 0;
-    bool res = true;
     int num_files = 0;
     while (getline(myfile,line) && line.substr(0, line.find(" ")) != "reader") {
         ++num_line;
@@ -102,8 +101,7 @@ std::string read_conf_writers_for_readers(std::ifstream& myfile, std::unordered_
             writer_rank = std::stoi(token);
         }
         else {
-            res = check_valid_file_conf(line);
-            if (res) {
+            if (check_valid_file_conf(line)) {
                 conf_writers[writer_rank].push_back(std::stoi(line));
                 ++num_files;
             }
@@ -137,8 +135,30 @@ bool check_valid_file_conf_reader(std::string& line) {
                                          line.end(), [](unsigned char c) { return !std::isdigit(c); }) == line.end();
 }
 
+bool modify_conf(std::ifstream& myfile, int phase, int num_line, std::string& line, bool is_my_conf, int writer_rank,
+                 std::unordered_map<int, std::vector<int>>& writers_conf,
+                 std::unordered_map<int, std::unordered_map<int, int>> &conf) {
+    bool res;
+    if (phase ==  0) {
+        std::cout << "conf file error line " + std::to_string(num_line) + ": after new reader must specify the writer" << std::endl;
+        return false;
+    }
+    res = check_valid_file_conf_reader(line);
+    if (res) {
+        if (is_my_conf) {
+            int num_file = std::stoi( line.substr(line.find(" ") + 1, line.length()));
+            conf[writer_rank][num_file] = writers_conf[writer_rank][num_file];
+        }
+    }
+    else {
+        std::cout << "conf file error line " + std::to_string(num_line) + ": after new writer, file size is needed" << std::endl;
+        myfile.close();
+    }
+    return res;
+}
+
 bool parser_conf_reader(std::ifstream& myfile, int rank, int num_line, bool is_my_conf, bool already_read_my_conf,
-                        int& actual_num_readers, std::unordered_map<int, std::vector<int>> writers_conf,
+                        int& actual_num_readers, std::unordered_map<int, std::vector<int>> &writers_conf,
                         std::unordered_map<int, std::unordered_map<int, int>> &conf) {
     std::string line;
     int writer_rank, phase;
@@ -169,20 +189,7 @@ bool parser_conf_reader(std::ifstream& myfile, int rank, int num_line, bool is_m
             writer_rank = get_writer_rank(line);
         }
         else {
-            if (phase ==  0) {
-                std::cout << "conf file error line " + std::to_string(num_line) + ": after new reader must specify the writer" << std::endl;
-                return false;
-            }
-            res = check_valid_file_conf_reader(line);
-            if (res) {
-                if (is_my_conf) {
-                    int num_file = std::stoi( line.substr(line.find(" ") + 1, line.length()));
-                    conf[writer_rank][num_file] = writers_conf[writer_rank][num_file];
-                }
-            }
-            else {
-                std::cout << "conf file error line " + std::to_string(num_line) + ": after new writer, file size is needed" << std::endl;
-                myfile.close();
+            if (!modify_conf(myfile, phase, num_line, line, is_my_conf, writer_rank, writers_conf, conf)) {
                 return false;
             }
         }
