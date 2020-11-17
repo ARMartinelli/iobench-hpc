@@ -162,9 +162,6 @@ bool parser_conf_reader(std::ifstream& myfile, int rank, int num_line, bool is_m
                     already_read_my_conf = true;
                 }
             }
-            else {
-                already_read_my_conf = false;
-            }
             ++actual_num_readers;
         }
         else if (new_writer(line)) {
