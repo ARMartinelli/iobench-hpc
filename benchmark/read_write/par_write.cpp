@@ -42,27 +42,17 @@ bool exists_dir(const std::string &s) {
     return (stat (s.c_str(), &buffer) == 0);
 }
 
-int main(int argc, char** argv) {
-    int rank, size, *array;
-    MPI_Init(&argc, &argv);
-    if (argc != 2) {
-        std::cout << "input error: configuration file needed" << std::endl;
-        MPI_Finalize();
-        return 1;
-    }
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
+int details_mode(const std::string& file_path, int rank, int size) {
+    std::vector<int> conf;
+    int* array;
     std::string dir_name("dir_process_" + std::to_string(rank));
     if (!exists_dir(dir_name) && mkdir(dir_name.c_str(), 0775) == -1) {
         std::cout << "writer " << rank << " failed to create directory" << std::endl;
         MPI_Finalize();
         return 1;
     }
-    const std::string file_path(argv[1]);
-    std::vector<int> conf;
     bool res_conf = read_conf_file_writer(file_path, rank, size, conf);
     if (!res_conf) {
-        MPI_Finalize();
         return 1;
     }
     for (int i = 0; i < conf.size(); ++i) {
@@ -74,6 +64,115 @@ int main(int argc, char** argv) {
         write_to_file(array, num_elements, file_name, rank);
         free(array);
     }
-    MPI_Finalize();
     return 0;
+}
+
+int batch_mode(const std::unordered_map<std::string, std::vector<std::pair<int, int>>>& conf, int rank) {
+    const std::string prefix("process_" + std::to_string(rank) + "_");
+    std::cout << "batch mode" << std::endl;
+    int k = 0, num_elements = 0;
+    int* array;
+    for (auto &pair : conf) {
+        for (auto& pair2 : pair.second) {
+            num_elements += pair2.first * pair2.second;
+        }
+    }
+    array = new int[num_elements];
+    std::fill_n(array, num_elements, rank + 1);
+    for (auto &pair : conf) {
+        std::string dir_name = prefix + pair.first;
+        if (!exists_dir(dir_name) && mkdir(dir_name.c_str(), 0775) == -1) {
+            std::cout << "writer " << rank << " failed to create directory" << std::endl;
+            MPI_Finalize();
+            return 1;
+        }
+        int *array;
+        std::string file_name;
+        int j = 0;
+        for (auto &pair2 : pair.second) {
+            int num_elements_dir = pair2.second;
+            for (int i = 0; i < pair2.first; ++i) {
+                file_name =
+                        dir_name + "/file_" + std::to_string(i + j) + "_writer_" + std::to_string(rank) + ".txt";
+                //std::cout << "writer " << std::to_string(rank) << " writing file " << file_name << std::endl;
+                write_to_file(array + k, num_elements_dir, file_name, rank);
+                k += num_elements_dir;
+            }
+            ++j;
+        }
+    }
+    free(array);
+    return 0;
+}
+
+int streaming_mode(const std::unordered_map<std::string, std::vector<std::pair<int, int>>>& conf, int rank) {
+    const std::string prefix("process_" + std::to_string(rank) + "_");
+    std::cout << "streaming mode" << std::endl;
+    for (auto &pair : conf) {
+        std::string dir_name = prefix + pair.first;
+        if (!exists_dir(dir_name) && mkdir(dir_name.c_str(), 0775) == -1) {
+            std::cout << "writer " << rank << " failed to create directory" << std::endl;
+            MPI_Finalize();
+            return 1;
+        }
+        std::cout << "writer " << std::to_string(rank) << " created dir " << dir_name << std::endl;
+        int *array;
+        std::string file_name;
+        int j = 0;
+        for (auto &pair2 : pair.second) {
+            int num_elements = pair2.second;
+            array = new int[num_elements];
+            std::fill_n(array, num_elements, rank + 1);
+            for (int i = 0; i < pair2.first; ++i) {
+                file_name =
+                        dir_name + "/file_" + std::to_string(i + j) + "_writer_" + std::to_string(rank) + ".txt";
+                //std::cout << "writer " << std::to_string(rank) << " writing file " << file_name << std::endl;
+                write_to_file(array, num_elements, file_name, rank);
+            }
+            ++j;
+            free(array);
+        }
+    }
+    return 0;
+}
+
+int abbr_mode(const std::string& file_path, int rank, int size, bool streaming) {
+    std::unordered_map<std::string, std::vector<std::pair<int, int>>> conf;
+    bool res_conf = read_conf_dir_file_writer(file_path, rank, size, conf);
+    int res;
+    if (res_conf) {
+        if (streaming)
+            res = streaming_mode(conf, rank);
+        else
+            res = batch_mode(conf, rank);
+
+    }
+    else {
+        std::cout << "error reading conf file" << std::endl;
+    }
+    return res;
+}
+
+int main(int argc, char** argv) {
+    int res, rank, size;
+    MPI_Init(&argc, &argv);
+    if (argc != 4) {
+        std::cout << "input error: configuration file, mode flag and streaming flag needed" << std::endl;
+        MPI_Finalize();
+        return 1;
+    }
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    const std::string file_path(argv[1]);
+    const std::string mode_flag(argv[2]);
+    const std::string streaming_flag(argv[3]);
+    if (mode_flag == "details") {
+        res = details_mode(file_path, rank, size);
+    }
+    else {
+        res = abbr_mode(file_path, rank, size, streaming_flag == "streaming");
+    }
+    MPI_Finalize();
+    return res;
 }

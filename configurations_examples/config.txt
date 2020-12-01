@@ -1,0 +1,27 @@
+writer 0:
+    dir0: 200 1000
+    dir1: 100 100
+writer 1:
+    dir0: 200 1000
+writer 2:
+    dir1: 100 100
+    dir2: 100 100
+    dir3: 100 100
+writer 3:
+    dir3: 200 1000
+reader 0:
+    writer 0:
+        dir0
+    writer 1:
+        dir0
+    writer 1:
+        dir1
+reader 1:
+    writer 0:
+        dir0
+        dir1
+    writer 2:
+        dir2
+        dir3
+    writer 3:
+        dir3
