@@ -6,7 +6,7 @@
 #include <limits>
 #include "../../conf_file_reader/conf_file_reader.hpp"
 
-bool read_from_file(int* array, int num_elements, std::string file_name, int rank) {
+bool read_from_file(int* array, int num_elements, const std::string& file_name, int rank) {
     struct flock lock;
     memset(&lock, 0, sizeof(lock));
     lock.l_type = F_RDLCK;    /* read/write (exclusive) lock */
@@ -33,7 +33,7 @@ bool read_from_file(int* array, int num_elements, std::string file_name, int ran
     return true;
 }
 
-void use_data(int* array, int num_elements, int rank, int& sum) {
+void use_data(int* array, int num_elements, int& sum) {
     for (int i = 0; i < num_elements; ++i) {
         if (sum > std::numeric_limits<int>::max() - array[i]) {
             sum = 0;
@@ -43,7 +43,7 @@ void use_data(int* array, int num_elements, int rank, int& sum) {
 
 }
 
-bool details_mode(std::string file_path, int rank, int size) {
+bool details_mode(const std::string& file_path, int rank, int size) {
     std::unordered_map<int, std::unordered_map<int, int>> conf;
     std::string dir_name;
     std::string file_name_prefix;
@@ -61,7 +61,7 @@ bool details_mode(std::string file_path, int rank, int size) {
                 file_name = file_name_prefix + "_part" + std::to_string(p2.first) + ".txt";
                 std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
                 read_from_file(array, num_elements, file_name, rank);
-                use_data(array, num_elements, rank, sum);
+                use_data(array, num_elements, sum);
                 free(array);
             }
         }
@@ -93,7 +93,7 @@ bool streaming_mode(int rank, const std::unordered_map<int, std::unordered_map<s
                 std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
                 if (! read_from_file(array, num_elements, file_name, rank))
                     return false;
-                use_data(array, num_elements, rank, sum);
+                use_data(array, num_elements, sum);
             }
 
             free(array);
@@ -133,7 +133,7 @@ bool batch_mode(int rank, const std::unordered_map<int, std::unordered_map<std::
             }
         }
     }
-    use_data(array, num_elements, rank, sum);
+    use_data(array, num_elements, sum);
     free(array);
     std::ofstream output_file("output_read_matrixes_" + std::to_string(rank) + ".txt");
     output_file << "result of reader " << rank << ": " << sum << "\n";
@@ -141,7 +141,7 @@ bool batch_mode(int rank, const std::unordered_map<int, std::unordered_map<std::
     return true;
 }
 
-bool abbr_mode(std::string file_path, int rank, int size, bool streaming) {
+bool abbr_mode(const std::string &file_path, int rank, int size, bool streaming) {
     std::unordered_map<int, std::unordered_map<std::string, std::pair<int, int>>> conf;
     bool res;
     if (read_conf_dir_file_reader(file_path, rank, size, conf)) {
