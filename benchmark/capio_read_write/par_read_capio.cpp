@@ -117,6 +117,7 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     capio_ordered capio(true, false, rank, capio_config_path);
     res = abbr_mode(capio, iobench_config_path, rank, size, streaming_flag == "streaming");
+    std::cout << "reader " << rank << " terminated" << std::endl;
     MPI_Finalize();
     if (res)
         return 0;

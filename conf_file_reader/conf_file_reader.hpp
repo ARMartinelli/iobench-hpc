@@ -285,7 +285,7 @@ bool file_parsing_writer(std::ifstream& myfile, int rank, int& actual_num_writer
                 if (is_my_conf) {
                     std::string dir = get_dir(line);
                     std::pair<int, int> file_info = get_file_info(line);
-                    std::cout << "dir: " << dir << std::endl;
+                    //std::cout << "dir: " << dir << std::endl;
                     conf[dir] = file_info;
                 }
             }
@@ -489,7 +489,7 @@ bool get_dirs_info(std::ifstream& myfile, int rank, int& actual_num_writers,
                 if (is_my_conf) {
                     std::string dir = get_dir(line);
                     std::pair<int, int> file_info = get_file_info(line);
-                    std::cout << "dir: " << dir << std::endl;
+                    //std::cout << "dir: " << dir << std::endl;
                     dirs_info[dir] = file_info;
                 }
             }
@@ -507,14 +507,9 @@ bool get_readers_info(std::ifstream& myfile, int rank, int& actual_num_writers,
                       std::unordered_map<std::string, std::vector<int>>& readers_info,
                       std::string& line) {
     bool res = true;
-    bool is_my_conf, already_read_my_conf = false;
     int actual_num_readers = 0;
     int num_line = 0;
     if (new_reader(line)) {
-        is_my_conf = my_conf(line, rank);
-        if (is_my_conf) {
-            already_read_my_conf = true;
-        }
         ++actual_num_readers;
     }
     else {
@@ -523,8 +518,13 @@ bool get_readers_info(std::ifstream& myfile, int rank, int& actual_num_writers,
         return false;
     }
 
-    int writer_rank, reader_rank, phase = 0;
+    int writer_rank, phase = 0;
+    int  reader_rank = get_process_rank(line);
+    /*if (rank == 1)
+        std::cout << "get_readers_info line: " << line << std::endl;*/
     while (getline(myfile,line)) {
+        /*if (rank == 1)
+            std::cout << "get_readers_info line: " << line << std::endl;*/
         ++num_line;
         if (new_reader(line)) {
             if (phase == 0) {
@@ -538,6 +538,8 @@ bool get_readers_info(std::ifstream& myfile, int rank, int& actual_num_writers,
         }
         else if (new_writer(line)) {
             writer_rank = get_process_rank(line);
+            /*if (rank == 1)
+                std::cout << "writer rank " << writer_rank << std::endl;*/
             if (writer_rank == rank) {
                 phase = 1;
             }
@@ -549,9 +551,12 @@ bool get_readers_info(std::ifstream& myfile, int rank, int& actual_num_writers,
             if (phase == 1) {
                 res = check_valid_file_dir_conf_reader(line);
                 if (res) {
-                    if (is_my_conf) {
+                    if (writer_rank == rank) {
                         std::string dir(line);
                         readers_info[dir].push_back(reader_rank);
+                        /*if (rank == 1) {
+                            std::cout << "dir " << dir << " reader rank " << reader_rank << std::endl;
+                        }*/
                     }
                 }
                 else {
