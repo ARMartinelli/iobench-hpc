@@ -2,8 +2,8 @@ add_executable(par_read_capio par_read_capio.cpp)
 add_executable(par_write_capio par_write_capio.cpp)
 
 
-target_link_libraries(par_read_capio ${MPI_LIBRARIES})
-target_link_libraries(par_write_capio ${MPI_LIBRARIES})
+target_link_libraries(par_read_capio ${MPI_LIBRARIES} rt Threads::Threads)
+target_link_libraries(par_write_capio ${MPI_LIBRARIES} rt Threads::Threads)
 # includes MPI
 include_directories(${MPI_INCLUDE_PATH})
 if(MPI_COMPILE_FLAGS)
