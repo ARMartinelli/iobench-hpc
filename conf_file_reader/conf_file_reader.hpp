@@ -118,7 +118,7 @@ std::string read_conf_writers_for_readers(std::ifstream& myfile, std::unordered_
     return line;
 }
 
-int get_writer_rank(const std::string& line) {
+int get_process_rank(const std::string& line) {
     std::string token = line.substr(line.find_first_not_of(" "), line.size() - 1);
     return std::stoi( token.substr(token.find(" ") + 1, token.length()));
 }
@@ -186,7 +186,7 @@ bool parser_conf_reader(std::ifstream& myfile, int rank, int num_line, bool is_m
         }
         else if (new_writer(line)) {
             phase = 1;
-            writer_rank = get_writer_rank(line);
+            writer_rank = get_process_rank(line);
         }
         else {
             if (!modify_conf(myfile, phase, num_line, line, is_my_conf, writer_rank, writers_conf, conf)) {
@@ -377,7 +377,7 @@ bool parser_conf_reader(std::ifstream& myfile, int rank, int num_line, bool is_m
         }
         else if (new_writer(line)) {
             phase = 1;
-            writer_rank = get_writer_rank(line);
+            writer_rank = get_process_rank(line);
         }
         else {
             if (!modify_conf(myfile, phase, num_line, line, is_my_conf, writer_rank, writers_conf, conf)) {
@@ -452,6 +452,133 @@ bool read_conf_dir_file_reader(const std::string& file_path, const int rank, con
     }
     else {
         std::cout << "Unable to open configuration file" << std::endl;
+        res = false;
+    }
+    return res;
+}
+
+bool get_dirs_info(std::ifstream& myfile, int rank, int& actual_num_writers,
+                   std::unordered_map<std::string, std::pair<int, int>> &dirs_info,
+                   std::string& line) {
+    bool is_my_conf, already_read_my_conf = false;
+    int num_line = 0;
+    while (getline(myfile,line) && line.substr(0, line.find(" ")) != "reader") {
+        ++num_line;
+        if (new_writer(line)) {
+            is_my_conf = my_conf(line, rank);
+            if (is_my_conf) {
+                if (already_read_my_conf) {
+                    std::cout << "conf file error line " + std::to_string(num_line) + ": two configurations for " + line << std::endl;
+                    return false;
+                }
+                else {
+                    already_read_my_conf = true;
+                }
+            }
+            else {
+                already_read_my_conf = false;
+            }
+            ++actual_num_writers;
+        }
+        else {
+            if (actual_num_writers == 0) {
+                std::cout << "conf file error line 1: the first line must be writer 0" << std::endl;
+                return false;
+            }
+            if (check_valid_file_conf_abbr(line)) {
+                if (is_my_conf) {
+                    std::string dir = get_dir(line);
+                    std::pair<int, int> file_info = get_file_info(line);
+                    std::cout << "dir: " << dir << std::endl;
+                    dirs_info[dir] = file_info;
+                }
+            }
+            else {
+                std::cout << "conf file error line " + std::to_string(num_line) + ": after new writer, file size is needed" << std::endl;
+                myfile.close();
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool get_readers_info(std::ifstream& myfile, int rank, int& actual_num_writers,
+                      std::unordered_map<std::string, std::vector<int>>& readers_info,
+                      std::string& line) {
+    bool res = true;
+    bool is_my_conf, already_read_my_conf = false;
+    int actual_num_readers = 0;
+    int num_line = 0;
+    if (new_reader(line)) {
+        is_my_conf = my_conf(line, rank);
+        if (is_my_conf) {
+            already_read_my_conf = true;
+        }
+        ++actual_num_readers;
+    }
+    else {
+        std::cout << "conf file error line 1: the first line must be reader 0" << std::endl;
+        myfile.close();
+        return false;
+    }
+
+    int writer_rank, reader_rank, phase = 0;
+    while (getline(myfile,line)) {
+        ++num_line;
+        if (new_reader(line)) {
+            if (phase == 0) {
+                std::cout << "conf file error line " + std::to_string(num_line) + ": after new reader must specify the writer" << std::endl;
+                myfile.close();
+                return false;
+            }
+            phase = 0;
+            reader_rank = get_process_rank(line);
+            ++actual_num_readers;
+        }
+        else if (new_writer(line)) {
+            writer_rank = get_process_rank(line);
+            if (writer_rank == rank) {
+                phase = 1;
+            }
+            else {
+                phase = 0;
+            }
+        }
+        else {
+            if (phase == 1) {
+                res = check_valid_file_dir_conf_reader(line);
+                if (res) {
+                    if (is_my_conf) {
+                        std::string dir(line);
+                        readers_info[dir].push_back(reader_rank);
+                    }
+                }
+                else {
+                    std::cout << "conf file error line " + std::to_string(num_line) + ": the name of the directory must be without spaces" << std::endl;
+                    myfile.close();
+                }
+
+            }
+        }
+    }
+    return res;
+
+}
+
+bool file_parsing_writer_capio(const std::string& file_path, int rank, int& actual_num_writers,
+                         std::unordered_map<std::string, std::pair<int, int>> &dirs_info,
+                               std::unordered_map<std::string, std::vector<int>>& readers_info) {
+    std::string line;
+    bool res;
+    std::ifstream myfile (file_path);
+    if (myfile.is_open()) {
+        res = get_dirs_info(myfile, rank, actual_num_writers, dirs_info, line);
+        if (res)
+            res = get_readers_info(myfile, rank, actual_num_writers, readers_info, line);
+    }
+    else {
+        std::cout << "unable to open configuration file" << std::endl;
         res = false;
     }
     return res;
