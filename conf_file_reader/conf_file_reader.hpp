@@ -542,7 +542,7 @@ bool get_readers_info(std::ifstream& myfile, int rank, int& actual_num_writers,
                 phase = 1;
             }
             else {
-                phase = 0;
+                phase = 2;
             }
         }
         else {
