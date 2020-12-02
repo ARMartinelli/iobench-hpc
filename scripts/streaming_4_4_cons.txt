@@ -1,6 +1,0 @@
-reader 0reading file: ./process_1_dir0/file_0_writer_1.txt
-reader 3reading file: ./process_3_dir3/file_0_writer_3.txt
-reader 2reading file: ./process_1_dir0/file_0_writer_1.txt
-reader 1reading file: ./process_3_dir3/file_0_writer_3.txt
-[mpiexec@falken-pc] Sending Ctrl-C to processes as requested
-[mpiexec@falken-pc] Press Ctrl-C again to force abort
