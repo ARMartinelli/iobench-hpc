@@ -25,3 +25,19 @@ reader 1:
         dir3
     writer 3:
         dir3
+reader 2:
+    writer 0:
+        dir0
+    writer 1:
+        dir0
+    writer 2:
+        dir1
+reader 3:
+    writer 0:
+        dir0
+        dir1
+    writer 2:
+        dir2
+        dir3
+    writer 3:
+        dir3
