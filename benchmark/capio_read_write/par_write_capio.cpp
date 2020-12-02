@@ -12,7 +12,7 @@ int batch_mode(capio_ordered &capio,
     int k = 0, num_elements = 0;
     int* array;
     for (auto &pair : dirs_info) {
-            num_elements += pair.second.second;
+            num_elements += pair.second.first * pair.second.second;
 
     }
     array = new int[num_elements];
@@ -25,8 +25,8 @@ int batch_mode(capio_ordered &capio,
         for (int i = 0; i < num_files; ++i) {
             //std::cout << "writer " << std::to_string(rank) << " writing file " << file_name << std::endl;
             capio.capio_send(array + k, num_elements_dir, rank);
+            k += num_elements_dir;
         }
-        k += num_elements_dir;
     }
     free(array);
     return 0;
