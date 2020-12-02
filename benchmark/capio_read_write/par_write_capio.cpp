@@ -43,10 +43,11 @@ int streaming_mode(capio_ordered &capio,
         int num_files = dirs_info.at(dir).first;
         int num_elements = dirs_info.at(dir).second;
         int* array = new int[num_elements];
-        std::fill_n(array, num_elements, rank + 1);
         for (int i = 0; i < num_files; ++i) {
+            std::fill_n(array, num_elements, rank + 1);
             //std::cout << "writer " << std::to_string(rank) << " writing file " << file_name << std::endl;
             capio.capio_send(array, num_elements, rank);
+
         }
         free(array);
     }

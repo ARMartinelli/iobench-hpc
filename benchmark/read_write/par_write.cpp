@@ -122,8 +122,8 @@ int streaming_mode(const std::unordered_map<std::string, std::vector<std::pair<i
         for (auto &pair2 : pair.second) {
             int num_elements = pair2.second;
             array = new int[num_elements];
-            std::fill_n(array, num_elements, rank + 1);
             for (int i = 0; i < pair2.first; ++i) {
+                std::fill_n(array, num_elements, rank + 1);
                 file_name =
                         dir_name + "/file_" + std::to_string(i + j) + "_writer_" + std::to_string(rank) + ".txt";
                 //std::cout << "writer " << std::to_string(rank) << " writing file " << file_name << std::endl;
