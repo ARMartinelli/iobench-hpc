@@ -1,0 +1,19 @@
+dir: dir3
+conf file error line 7: after new reader must specify the writer
+error reading conf file
+dir: dir0
+dir: dir1
+dir: conf file error line 7: after new reader must specify the writer
+dir: dir0
+reader 32767
+error reading conf file
+dir0
+dir: dir1
+conf file error line 16: after new reader must specify the writer
+dir: error reading conf file
+dir2
+dir: dir3
+conf file error line 7: after new reader must specify the writer
+error reading conf file
+[mpiexec@falken-pc] Sending Ctrl-C to processes as requested
+[mpiexec@falken-pc] Press Ctrl-C again to force abort

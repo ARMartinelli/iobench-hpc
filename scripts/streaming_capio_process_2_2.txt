@@ -1,0 +1,2 @@
+input error: mpi_buf and config file needed input error: mpi_buf and config file needed 
+
