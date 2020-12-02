@@ -67,15 +67,13 @@ int details_mode(const std::string& file_path, int rank, int size) {
     return 0;
 }
 
-int batch_mode(const std::unordered_map<std::string, std::vector<std::pair<int, int>>>& conf, int rank) {
+int batch_mode(const std::unordered_map<std::string, std::pair<int, int>>& conf, int rank) {
     const std::string prefix("process_" + std::to_string(rank) + "_");
     std::cout << "batch mode" << std::endl;
     int k = 0, num_elements = 0;
     int* array;
     for (auto &pair : conf) {
-        for (auto& pair2 : pair.second) {
-            num_elements += pair2.first * pair2.second;
-        }
+        num_elements += pair.second.first * pair.second.second;
     }
     array = new int[num_elements];
     std::fill_n(array, num_elements, rank + 1);
@@ -89,23 +87,22 @@ int batch_mode(const std::unordered_map<std::string, std::vector<std::pair<int, 
         int *array;
         std::string file_name;
         int j = 0;
-        for (auto &pair2 : pair.second) {
-            int num_elements_dir = pair2.second;
-            for (int i = 0; i < pair2.first; ++i) {
-                file_name =
-                        dir_name + "/file_" + std::to_string(i + j) + "_writer_" + std::to_string(rank) + ".txt";
-                //std::cout << "writer " << std::to_string(rank) << " writing file " << file_name << std::endl;
-                write_to_file(array + k, num_elements_dir, file_name, rank);
-                k += num_elements_dir;
-            }
-            ++j;
+        int num_elements_dir = pair.second.second;
+        for (int i = 0; i < pair.second.first; ++i) {
+            file_name =
+                    dir_name + "/file_" + std::to_string(i + j) + "_writer_" + std::to_string(rank) + ".txt";
+            //std::cout << "writer " << std::to_string(rank) << " writing file " << file_name << std::endl;
+            write_to_file(array + k, num_elements_dir, file_name, rank);
+            k += num_elements_dir;
         }
+        ++j;
     }
+
     free(array);
     return 0;
 }
 
-int streaming_mode(const std::unordered_map<std::string, std::vector<std::pair<int, int>>>& conf, int rank) {
+int streaming_mode(const std::unordered_map<std::string, std::pair<int, int>>& conf, int rank) {
     const std::string prefix("process_" + std::to_string(rank) + "_");
     std::cout << "streaming mode" << std::endl;
     for (auto &pair : conf) {
@@ -119,25 +116,24 @@ int streaming_mode(const std::unordered_map<std::string, std::vector<std::pair<i
         int *array;
         std::string file_name;
         int j = 0;
-        for (auto &pair2 : pair.second) {
-            int num_elements = pair2.second;
-            array = new int[num_elements];
-            for (int i = 0; i < pair2.first; ++i) {
-                std::fill_n(array, num_elements, rank + 1);
-                file_name =
-                        dir_name + "/file_" + std::to_string(i + j) + "_writer_" + std::to_string(rank) + ".txt";
-                //std::cout << "writer " << std::to_string(rank) << " writing file " << file_name << std::endl;
-                write_to_file(array, num_elements, file_name, rank);
-            }
-            ++j;
-            free(array);
+        int num_elements = pair.second.second;
+        array = new int[num_elements];
+        for (int i = 0; i < pair.second.first; ++i) {
+            std::fill_n(array, num_elements, rank + 1);
+            file_name =
+                    dir_name + "/file_" + std::to_string(i + j) + "_writer_" + std::to_string(rank) + ".txt";
+            //std::cout << "writer " << std::to_string(rank) << " writing file " << file_name << std::endl;
+            write_to_file(array, num_elements, file_name, rank);
         }
+        ++j;
+        free(array);
+
     }
     return 0;
 }
 
 int abbr_mode(const std::string& file_path, int rank, int size, bool streaming) {
-    std::unordered_map<std::string, std::vector<std::pair<int, int>>> conf;
+    std::unordered_map<std::string, std::pair<int, int>> conf;
     bool res_conf = read_conf_dir_file_writer(file_path, rank, size, conf);
     int res;
     if (res_conf) {

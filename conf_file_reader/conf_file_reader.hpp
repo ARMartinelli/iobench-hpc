@@ -253,7 +253,7 @@ bool check_valid_file_conf_abbr(const std::string& line) {
 }
 
 bool file_parsing_writer(std::ifstream& myfile, int rank, int& actual_num_writers,
-                         std::unordered_map<std::string, std::vector<std::pair<int, int>>> &conf) {
+                         std::unordered_map<std::string, std::pair<int, int>> &conf) {
     std::string line;
     bool is_my_conf, already_read_my_conf = false;
     int num_line = 0;
@@ -286,7 +286,7 @@ bool file_parsing_writer(std::ifstream& myfile, int rank, int& actual_num_writer
                     std::string dir = get_dir(line);
                     std::pair<int, int> file_info = get_file_info(line);
                     std::cout << "dir: " << dir << std::endl;
-                    conf[dir].push_back(file_info);
+                    conf[dir] = file_info;
                 }
             }
             else {
@@ -300,8 +300,8 @@ bool file_parsing_writer(std::ifstream& myfile, int rank, int& actual_num_writer
 }
 
 bool read_conf_dir_file_writer(const std::string& file_path, const int rank, const int num_writers,
-                               std::unordered_map<std::string, std::vector<std::pair<int, int>>> &conf) {
-    std::ifstream myfile (file_path);
+                               std::unordered_map<std::string, std::pair<int, int>> &conf) {
+    std::ifstream myfile(file_path);
     bool res = true;
     int actual_num_writers = 0;
     if (myfile.is_open()) {
