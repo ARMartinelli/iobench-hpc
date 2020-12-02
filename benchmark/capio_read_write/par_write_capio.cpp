@@ -58,6 +58,15 @@ int abbr_mode(capio_ordered &capio, const std::string& file_path, int rank, int 
     std::unordered_map<std::string, std::pair<int, int>> dirs_info;
     std::unordered_map<std::string, std::vector<int>> readers_info;
     bool res_conf = file_parsing_writer_capio(file_path, rank, size, dirs_info, readers_info);
+    if (rank == 0) {
+        for (auto& pair : readers_info) {
+            std::cout << "dir: " << pair.first << std::endl;
+            for (auto& reader_rank : pair.second) {
+                std::cout << "reader " << reader_rank << std::endl;
+            }
+        }
+    }
+
     int res;
     if (res_conf) {
         if (streaming)
@@ -77,7 +86,7 @@ int main(int argc, char** argv) {
     int rank, size;
     bool res;
     MPI_Init(&argc, &argv);
-    if (argc != 4) {
+    if (argc != 5) {
         std::cout << "input error: capio configuration file, iobench configuration file, mode flag and streaming flag needed" << std::endl;
         MPI_Finalize();
         return 1;

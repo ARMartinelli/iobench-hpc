@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
     int rank, size;
     bool res;
     MPI_Init(&argc, &argv);
-    if (argc != 4) {
+    if (argc != 5) {
         std::cout << "input error: capio configuration file, iobench configuration file, mode flag and streaming flag needed" << std::endl;
         MPI_Finalize();
         return 1;
