@@ -7,7 +7,6 @@
 int batch_mode(capio_ordered &capio,
                const std::unordered_map<std::string, std::pair<int, int>>& dirs_info,
                const std::unordered_map<std::string, std::vector<int>>& readers_info, int rank) {
-    const std::string prefix("process_" + std::to_string(rank) + "_");
     //std::cout << "batch mode" << std::endl;
     int k = 0, num_elements = 0;
     int* array;
@@ -37,7 +36,6 @@ int batch_mode(capio_ordered &capio,
 int streaming_mode(capio_ordered &capio,
                    const std::unordered_map<std::string, std::pair<int, int>>& dirs_info,
                    const std::unordered_map<std::string, std::vector<int>>& readers_info, int rank) {
-    const std::string prefix("process_" + std::to_string(rank) + "_");
     //std::cout << "streaming  writer" << rank << std::endl;
     for (auto& pair : readers_info) {
         std::string dir(pair.first);
@@ -87,10 +85,10 @@ int main(int argc, char** argv) {
         MPI_Finalize();
         return 1;
     }
-    std::string capio_config_path(argv[1]);
-    std::string iobench_config_path(argv[2]);
-    std::string mode_flag(argv[3]);
-    std::string streaming_flag(argv[4]);
+    const std::string capio_config_path(argv[1]);
+    const std::string iobench_config_path(argv[2]);
+    const std::string mode_flag(argv[3]);
+    const std::string streaming_flag(argv[4]);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     capio_ordered capio(false, true, rank, capio_config_path);

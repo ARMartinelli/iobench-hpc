@@ -75,7 +75,8 @@ bool details_mode(const std::string& file_path, int rank, int size) {
     return res;
 }
 
-bool streaming_mode(int rank, const std::unordered_map<int, std::unordered_map<std::string, std::pair<int, int>>>& conf) {
+bool streaming_mode(const std::string &data_path, int rank,
+                    const std::unordered_map<int, std::unordered_map<std::string, std::pair<int, int>>>& conf) {
     std::string dir_name;
     std::string file_name_prefix;
     std::string file_name;
@@ -86,7 +87,7 @@ bool streaming_mode(int rank, const std::unordered_map<int, std::unordered_map<s
             int num_files_dir = p2.second.first;
             int num_elements = p2.second.second;
             int *array = new int[num_elements];
-            dir_name = "./process_" + std::to_string(writer_rank) + "_" + p2.first;
+            dir_name = data_path + "/process_" + std::to_string(writer_rank) + "_" + p2.first;
             for (int i = 0; i < num_files_dir; ++i) {
                 file_name_prefix = dir_name + "/file_" + std::to_string(i);
                 file_name = file_name_prefix + "_writer_" + std::to_string(writer_rank) +  ".txt";
@@ -105,7 +106,8 @@ bool streaming_mode(int rank, const std::unordered_map<int, std::unordered_map<s
     return true;
 }
 
-bool batch_mode(int rank, const std::unordered_map<int, std::unordered_map<std::string, std::pair<int, int>>>& conf) {
+bool batch_mode(const std::string &data_path,
+                int rank, const std::unordered_map<int, std::unordered_map<std::string, std::pair<int, int>>>& conf) {
     std::string dir_name;
     std::string file_name_prefix;
     std::string file_name;
@@ -122,11 +124,11 @@ bool batch_mode(int rank, const std::unordered_map<int, std::unordered_map<std::
             int writer_rank = p1.first;
             int num_files_dir = p2.second.first;
             int num_elements_dir = p2.second.second;
-            dir_name = "./process_" + std::to_string(writer_rank) + "_" + p2.first;
+            dir_name = data_path + "/process_" + std::to_string(writer_rank) + "_" + p2.first;
             for (int i = 0; i < num_files_dir; ++i) {
                 file_name_prefix = dir_name + "/file_" + std::to_string(i);
                 file_name = file_name_prefix + "_writer_" + std::to_string(writer_rank) +  ".txt";
-                std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
+                //std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
                 if (! read_from_file(array + k, num_elements_dir, file_name, rank))
                     return false;
                 k += num_elements_dir;
@@ -141,15 +143,16 @@ bool batch_mode(int rank, const std::unordered_map<int, std::unordered_map<std::
     return true;
 }
 
-bool abbr_mode(const std::string &file_path, int rank, int size, bool streaming) {
+bool abbr_mode(const std::string &data_path,
+               const std::string &file_path, int rank, int size, bool streaming) {
     std::unordered_map<int, std::unordered_map<std::string, std::pair<int, int>>> conf;
     bool res;
     if (read_conf_dir_file_reader(file_path, rank, size, conf)) {
         if (streaming) {
-            res = streaming_mode(rank, conf);
+            res = streaming_mode(data_path, rank, conf);
         }
         else {
-            res = batch_mode(rank, conf);
+            res = batch_mode(data_path, rank, conf);
         }
     }
     else {
@@ -162,21 +165,22 @@ bool abbr_mode(const std::string &file_path, int rank, int size, bool streaming)
     int rank, size;
     bool res;
     MPI_Init(&argc, &argv);
-    if (argc != 4) {
-        std::cout << "input error: configuration file, mode flag and streaming flag needed" << std::endl;
+    if (argc != 5) {
+        std::cout << "input error: path where storing data, configuration file, mode flag and streaming flag needed" << std::endl;
         MPI_Finalize();
         return 1;
     }
-    std::string file_path(argv[1]);
-    std::string mode_flag(argv[2]);
-    std::string streaming_flag(argv[3]);
+    const std::string data_path(argv[1]);
+    const std::string file_path(argv[2]);
+    const std::string mode_flag(argv[3]);
+    const std::string streaming_flag(argv[4]);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     if (mode_flag == "details") {
         res = details_mode(file_path, rank, size);
     }
     else {
-        res = abbr_mode(file_path, rank, size, streaming_flag == "streaming");
+        res = abbr_mode(data_path, file_path, rank, size, streaming_flag == "streaming");
     }
 
     MPI_Finalize();
@@ -184,5 +188,4 @@ bool abbr_mode(const std::string &file_path, int rank, int size, bool streaming)
         return 0;
     else
         return 1;
-    return res;
 }
