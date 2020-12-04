@@ -100,7 +100,7 @@ bool streaming_mode(const std::string &data_path, int rank,
             free(array);
         }
     }
-    std::ofstream output_file("output_read_matrixes_" + std::to_string(rank) + ".txt");
+    std::ofstream output_file(data_path + "/output_read_matrixes_" + std::to_string(rank) + ".txt");
     output_file << "result of reader " << rank << ": " << sum << "\n";
     output_file.close();
     return true;
@@ -137,7 +137,7 @@ bool batch_mode(const std::string &data_path,
     }
     use_data(array, num_elements, sum);
     free(array);
-    std::ofstream output_file("output_read_matrixes_" + std::to_string(rank) + ".txt");
+    std::ofstream output_file(data_path + "/output_read_matrixes_" + std::to_string(rank) + ".txt");
     output_file << "result of reader " << rank << ": " << sum << "\n";
     output_file.close();
     return true;

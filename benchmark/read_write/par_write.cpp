@@ -85,7 +85,6 @@ int batch_mode(const std::string& data_path,
             MPI_Finalize();
             return 1;
         }
-        int *array;
         std::string file_name;
         int num_elements_dir = pair.second.second;
         for (int i = 0; i < pair.second.first; ++i) {
