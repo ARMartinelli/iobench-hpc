@@ -59,7 +59,7 @@ bool details_mode(const std::string& file_path, int rank, int size) {
                 dir_name = "./dir_process_" + std::to_string(writer_rank);
                 file_name_prefix = dir_name + "/output_writer_" + std::to_string(writer_rank);
                 file_name = file_name_prefix + "_part" + std::to_string(p2.first) + ".txt";
-                std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
+                //std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
                 read_from_file(array, num_elements, file_name, rank);
                 use_data(array, num_elements, sum);
                 free(array);
@@ -90,7 +90,7 @@ bool streaming_mode(int rank, const std::unordered_map<int, std::unordered_map<s
             for (int i = 0; i < num_files_dir; ++i) {
                 file_name_prefix = dir_name + "/file_" + std::to_string(i);
                 file_name = file_name_prefix + "_writer_" + std::to_string(writer_rank) +  ".txt";
-                std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
+                //std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
                 if (! read_from_file(array, num_elements, file_name, rank))
                     return false;
                 use_data(array, num_elements, sum);
@@ -180,5 +180,9 @@ bool abbr_mode(const std::string &file_path, int rank, int size, bool streaming)
     }
 
     MPI_Finalize();
+    if (res)
+        return 0;
+    else
+        return 1;
     return res;
 }

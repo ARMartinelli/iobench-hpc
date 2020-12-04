@@ -1,8 +1,5 @@
 #include <iostream>
 #include <mpi.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
 #include <limits>
 #include "../../conf_file_reader/conf_file_reader.hpp"
 #include "../../../capio/capio_ordered/capio_ordered.hpp"
@@ -33,7 +30,7 @@ bool streaming_mode(capio_ordered& capio,int rank,
             for (int i = 0; i < num_files_dir; ++i) {
                 file_name_prefix = dir_name + "/file_" + std::to_string(i);
                 file_name = file_name_prefix + "_writer_" + std::to_string(writer_rank) +  ".txt";
-                std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
+                //std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
                 capio.capio_recv(array, num_elements);
                 use_data(array, num_elements, sum);
             }
@@ -69,7 +66,7 @@ bool batch_mode(capio_ordered& capio,
             for (int i = 0; i < num_files_dir; ++i) {
                 file_name_prefix = dir_name + "/file_" + std::to_string(i);
                 file_name = file_name_prefix + "_writer_" + std::to_string(writer_rank) +  ".txt";
-                std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
+                //std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
                 capio.capio_recv(array + k, num_elements_dir);
                 k += num_elements_dir;
             }
