@@ -221,8 +221,8 @@ bool read_conf_file_reader(const std::string& file_path, const int rank, const i
         }
         parser_conf_reader(myfile, rank, num_line, is_my_conf, already_read_my_conf, actual_num_readers, writers_conf, conf);
         myfile.close();
-        if(num_readers != actual_num_readers) {
-            std::cout << "conf file error: number of readers in configuration file and the actual number of readers launched are not the same" << std::endl;
+        if(num_readers > actual_num_readers) {
+            std::cout << "conf file error: number of readers in configuration file  is greater then the actual number of readers launched" << std::endl;
             return false;
         }
     }
@@ -307,9 +307,9 @@ bool read_conf_dir_file_writer(const std::string& file_path, const int rank, con
     if (myfile.is_open()) {
         file_parsing_writer(myfile, rank, actual_num_writers, conf);
         myfile.close();
-        if (actual_num_writers != num_writers) {
+        if (actual_num_writers > num_writers) {
             res = false;
-            std::cout << "config file error: actual_num_writer and num of writers in config file are different" << std::endl;
+            std::cout << "config file error: the actual number of writers is greater then the number of writers in config file" << std::endl;
         }
     }
     else {
@@ -445,8 +445,8 @@ bool read_conf_dir_file_reader(const std::string& file_path, const int rank, con
         }
         parser_conf_reader(myfile, rank, num_line, is_my_conf, already_read_my_conf, actual_num_readers, writers_conf, conf);
         myfile.close();
-        if(num_readers != actual_num_readers) {
-            std::cout << "conf file error: number of readers in configuration file and the actual number of readers launched are not the same" << std::endl;
+        if(num_readers > actual_num_readers) {
+            std::cout << "conf file error: the number of readers in configuration file is greater then the actual number of readers launched" << std::endl;
             return false;
         }
     }
