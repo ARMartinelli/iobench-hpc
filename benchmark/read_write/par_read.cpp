@@ -7,6 +7,7 @@
 #include "../../conf_file_reader/conf_file_reader.hpp"
 
 bool read_from_file(int* array, int num_elements, const std::string& file_name, int rank) {
+    bool res = true;
     struct flock lock;
     memset(&lock, 0, sizeof(lock));
     lock.l_type = F_RDLCK;    /* read/write (exclusive) lock */
@@ -19,18 +20,26 @@ bool read_from_file(int* array, int num_elements, const std::string& file_name, 
     while ((fd = open(file_name.c_str(), O_RDONLY)) < 0);  /* -1 signals an error */
     if (fcntl(fd, F_SETLKW, &lock) < 0) {
         std::cout << "reader " << rank << " failed to lock the file" << std::endl;
+        close(fd);
         return false;
     }
-    read(fd, array, sizeof(int) * num_elements);
-
+    int read_res = read(fd, array, sizeof(int) * num_elements);
+    if (read_res == 0) {
+        std::cout << "reader " << rank << " reached eof while reading the file" << std::endl;
+        res = false;
+    }
+    else if (read_res < 0) {
+        std::cout << "reader " << rank << " failed to read the file" << std::endl;
+        res = false;
+    }
     /* Release the lock explicitly. */
     lock.l_type = F_UNLCK;
     if (fcntl(fd, F_SETLK, &lock) < 0) {
         std::cout << "reader " << rank << " failed to unlock the file" << std::endl;
-        return false;
+        res = false;
     }
     close(fd);
-    return true;
+    return res;
 }
 
 void use_data(int* array, int num_elements, int& sum) {
@@ -92,9 +101,12 @@ bool streaming_mode(const std::string &data_path, int rank,
                 file_name_prefix = dir_name + "/file_" + std::to_string(i);
                 file_name = file_name_prefix + "_writer_" + std::to_string(writer_rank) +  ".txt";
                 //std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
-                if (! read_from_file(array, num_elements, file_name, rank))
-                    return false;
-                use_data(array, num_elements, sum);
+                if (read_from_file(array, num_elements, file_name, rank)) {
+                    use_data(array, num_elements, sum);
+                }
+                else {
+                    --i;
+                }
             }
 
             free(array);
@@ -129,9 +141,11 @@ bool batch_mode(const std::string &data_path,
                 file_name_prefix = dir_name + "/file_" + std::to_string(i);
                 file_name = file_name_prefix + "_writer_" + std::to_string(writer_rank) +  ".txt";
                 //std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
-                if (! read_from_file(array + k, num_elements_dir, file_name, rank))
-                    return false;
-                k += num_elements_dir;
+                if (read_from_file(array + k, num_elements_dir, file_name, rank))
+                    k += num_elements_dir;
+                else
+                    --i;
+
             }
         }
     }
