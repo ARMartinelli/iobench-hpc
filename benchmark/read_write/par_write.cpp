@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 #include <sys/stat.h>
 #include "../../conf_file_reader/conf_file_reader.hpp"
 
@@ -11,7 +12,7 @@ void write_to_file(int* matrix, int num_elements, const std::string& file_name, 
     memset(&lock, 0, sizeof(lock));
     int fd;
     if ((fd = open(file_name.c_str(), O_WRONLY | O_CREAT, 0664)) == -1) {
-        std::cout << "writer " << rank << " error opening file" << std::endl;
+        std::cout << "writer " << rank << " error opening file, errno = " << errno << " strerror(errno): " << strerror(errno) << std::endl;
         MPI_Finalize();
         exit(1);
     }
