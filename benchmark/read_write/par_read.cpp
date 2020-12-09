@@ -25,7 +25,7 @@ bool read_from_file(int* array, int num_elements, const std::string& file_name, 
     }
     int read_res = read(fd, array, sizeof(int) * num_elements);
     if (read_res == 0) {
-        std::cout << "reader " << rank << " reached eof while reading the file" << std::endl;
+        //std::cout << "reader " << rank << " reached eof while reading the file" << std::endl;
         res = false;
     }
     else if (read_res < 0) {

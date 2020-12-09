@@ -101,19 +101,20 @@ int main(int argc, char** argv) {
     int rank, size;
     bool res;
     MPI_Init(&argc, &argv);
-    if (argc != 6) {
-        std::cout << "input error: path where storing data, capio configuration file, iobench configuration file, mode flag and streaming flag needed" << std::endl;
+    if (argc != 7) {
+        std::cout << "input error: capio buffer size, path where storing data, capio configuration file, iobench configuration file, mode flag and streaming flag needed" << std::endl;
         MPI_Finalize();
         return 1;
     }
-    const std::string data_path(argv[1]);
-    const std::string capio_config_path(argv[2]);
-    const std::string iobench_config_path(argv[3]);
-    const std::string mode_flag(argv[4]);
-    const std::string streaming_flag(argv[5]);
+    const int buf_size = std::stoi(argv[1]);
+    const std::string data_path(argv[2]);
+    const std::string capio_config_path(argv[3]);
+    const std::string iobench_config_path(argv[4]);
+    const std::string mode_flag(argv[5]);
+    const std::string streaming_flag(argv[6]);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-    capio_ordered capio(true, false, rank, capio_config_path);
+    capio_ordered capio(true, false, rank, buf_size, capio_config_path);
     res = abbr_mode(capio, data_path, iobench_config_path, rank, size, streaming_flag == "streaming");
     std::cout << "reader " << rank << " terminated" << std::endl;
     MPI_Finalize();
