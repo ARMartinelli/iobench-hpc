@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include "../../conf_file_reader/conf_file_reader.hpp"
 
-void write_to_file(int* matrix, int num_elements, const std::string& file_name, int rank) {
+void write_to_file_with_lock(int* matrix, int num_elements, const std::string& file_name, int rank) {
     struct flock lock;
     memset(&lock, 0, sizeof(lock));
     int fd;
@@ -34,6 +34,20 @@ void write_to_file(int* matrix, int num_elements, const std::string& file_name, 
     if (fcntl(fd, F_SETLKW, &lock) == - 1) {
         std::cout << "write " << rank << "failed to unlock the file" << std::endl;
     }
+
+    close(fd); // close the file: would unlock if needed
+}
+
+void write_to_file(int* matrix, int num_elements, const std::string& file_name, int rank) {
+    int fd;
+    if ((fd = open(file_name.c_str(), O_WRONLY | O_CREAT, 0664)) == -1) {
+        std::cout << "writer " << rank << " error opening file, errno = " << errno << " strerror(errno): " << strerror(errno) << std::endl;
+        MPI_Finalize();
+        exit(1);
+    }
+
+    write(fd, matrix, sizeof(int) * num_elements);
+    // Now release the lock explicitly.
 
     close(fd); // close the file: would unlock if needed
 }
@@ -69,7 +83,8 @@ int details_mode(const std::string& file_path, int rank, int size) {
 }
 
 int batch_mode(const std::string& data_path,
-               const std::unordered_map<std::string, std::pair<int, int>>& conf, int rank) {
+               const std::unordered_map<std::string, std::pair<int, int>>& conf, int rank,
+               bool concurrency) {
     const std::string prefix(data_path + "/process_" + std::to_string(rank) + "_");
     std::cout << "batch mode" << std::endl;
     int k = 0, num_elements = 0;
@@ -92,7 +107,12 @@ int batch_mode(const std::string& data_path,
             file_name =
                     dir_name + "/file_" + std::to_string(i) + "_writer_" + std::to_string(rank) + ".txt";
             //std::cout << "writer " << std::to_string(rank) << " writing file " << file_name << std::endl;
-            write_to_file(array + k, num_elements_dir, file_name, rank);
+            if (concurrency) {
+                write_to_file_with_lock(array + k, num_elements_dir, file_name, rank);
+            }
+            else {
+                write_to_file(array + k, num_elements_dir, file_name, rank);
+            }
             k += num_elements_dir;
         }
     }
@@ -102,7 +122,8 @@ int batch_mode(const std::string& data_path,
 }
 
 int streaming_mode(const std::string& data_path,
-                   const std::unordered_map<std::string, std::pair<int, int>>& conf, int rank) {
+                   const std::unordered_map<std::string, std::pair<int, int>>& conf,
+                   int rank, bool concurrency) {
     const std::string prefix(data_path + "/process_" + std::to_string(rank) + "_");
     std::cout << "streaming mode" << std::endl;
     for (auto &pair : conf) {
@@ -122,7 +143,12 @@ int streaming_mode(const std::string& data_path,
             file_name =
                     dir_name + "/file_" + std::to_string(i) + "_writer_" + std::to_string(rank) + ".txt";
             //std::cout << "writer " << std::to_string(rank) << " writing file " << file_name << std::endl;
-            write_to_file(array, num_elements, file_name, rank);
+            if (concurrency) {
+                write_to_file_with_lock(array, num_elements, file_name, rank);
+            }
+            else {
+                write_to_file(array, num_elements, file_name, rank);
+            }
         }
         free(array);
 
@@ -130,15 +156,16 @@ int streaming_mode(const std::string& data_path,
     return 0;
 }
 
-int abbr_mode(const std::string& data_path, const std::string& file_path, int rank, int size, bool streaming) {
+int abbr_mode(const std::string& data_path, const std::string& file_path,
+              int rank, int size, bool streaming, bool concurrency) {
     std::unordered_map<std::string, std::pair<int, int>> conf;
     bool res_conf = read_conf_dir_file_writer(file_path, rank, size, conf);
     int res;
     if (res_conf) {
         if (streaming)
-            res = streaming_mode(data_path, conf, rank);
+            res = streaming_mode(data_path, conf, rank, concurrency);
         else
-            res = batch_mode(data_path, conf, rank);
+            res = batch_mode(data_path, conf, rank, concurrency);
 
     }
     else {
@@ -150,8 +177,8 @@ int abbr_mode(const std::string& data_path, const std::string& file_path, int ra
 int main(int argc, char** argv) {
     int res, rank, size;
     MPI_Init(&argc, &argv);
-    if (argc != 5) {
-        std::cout << "input error: path where storing data, configuration file, mode flag and streaming flag needed" << std::endl;
+    if (argc != 6) {
+        std::cout << "input error: path where storing data, configuration file, mode option, streaming option and concurrent option needed" << std::endl;
         MPI_Finalize();
         return 1;
     }
@@ -159,13 +186,14 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     const std::string data_path(argv[1]);
     const std::string conf_file_path(argv[2]);
-    const std::string mode_flag(argv[3]);
-    const std::string streaming_flag(argv[4]);
-    if (mode_flag == "details") {
+    const std::string mode_opt(argv[3]);
+    const std::string streaming_opt(argv[4]);
+    const std::string concurrent_opt(argv[5]);
+    if (mode_opt == "details") {
         res = details_mode(conf_file_path, rank, size);
     }
     else {
-        res = abbr_mode(data_path, conf_file_path, rank, size, streaming_flag == "streaming");
+        res = abbr_mode(data_path, conf_file_path, rank, size, streaming_opt == "streaming", concurrent_opt == "concurrency");
     }
     MPI_Finalize();
     return res;

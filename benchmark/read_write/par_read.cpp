@@ -6,7 +6,7 @@
 #include <limits>
 #include "../../conf_file_reader/conf_file_reader.hpp"
 
-bool read_from_file(int* array, int num_elements, const std::string& file_name, int rank) {
+bool read_from_file_with_lock(int* array, int num_elements, const std::string& file_name, int rank) {
     bool res = true;
     struct flock lock;
     memset(&lock, 0, sizeof(lock));
@@ -42,6 +42,27 @@ bool read_from_file(int* array, int num_elements, const std::string& file_name, 
     return res;
 }
 
+bool read_from_file(int* array, int num_elements, const std::string& file_name, int rank) {
+    bool res = true;
+
+    int fd; /* file descriptor to identify a file within a process */
+    if ((fd = open(file_name.c_str(), O_RDONLY)) < 0) {  /* -1 signals an error */
+        std::cout << "reader " << rank << " failed to open the file: " << file_name << std::endl;
+        return false;
+    }
+    int read_res = read(fd, array, sizeof(int) * num_elements);
+    if (read_res == 0) {
+        //std::cout << "reader " << rank << " reached eof while reading the file" << std::endl;
+        res = false;
+    }
+    else if (read_res < 0) {
+        std::cout << "reader " << rank << " failed to read the file" << std::endl;
+        res = false;
+    }
+    close(fd);
+    return res;
+}
+
 void use_data(int* array, int num_elements, int& sum) {
     for (int i = 0; i < num_elements; ++i) {
         if (sum > std::numeric_limits<int>::max() - array[i]) {
@@ -69,7 +90,7 @@ bool details_mode(const std::string& file_path, int rank, int size) {
                 file_name_prefix = dir_name + "/output_writer_" + std::to_string(writer_rank);
                 file_name = file_name_prefix + "_part" + std::to_string(p2.first) + ".txt";
                 //std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
-                read_from_file(array, num_elements, file_name, rank);
+                read_from_file_with_lock(array, num_elements, file_name, rank);
                 use_data(array, num_elements, sum);
                 free(array);
             }
@@ -85,7 +106,8 @@ bool details_mode(const std::string& file_path, int rank, int size) {
 }
 
 bool streaming_mode(const std::string &data_path, int rank,
-                    const std::unordered_map<int, std::unordered_map<std::string, std::pair<int, int>>>& conf) {
+                    const std::unordered_map<int, std::unordered_map<std::string, std::pair<int, int>>>& conf,
+                    bool concurrency) {
     std::string dir_name;
     std::string file_name_prefix;
     std::string file_name;
@@ -101,11 +123,21 @@ bool streaming_mode(const std::string &data_path, int rank,
                 file_name_prefix = dir_name + "/file_" + std::to_string(i);
                 file_name = file_name_prefix + "_writer_" + std::to_string(writer_rank) +  ".txt";
                 //std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
-                if (read_from_file(array, num_elements, file_name, rank)) {
-                    use_data(array, num_elements, sum);
+                if (concurrency) {
+                    bool res = read_from_file_with_lock(array, num_elements, file_name, rank);
+                    if (res)
+                        use_data(array, num_elements, sum);
+                    else
+                        --i;
                 }
                 else {
-                    --i;
+                    if (read_from_file(array, num_elements, file_name, rank)) {
+                        use_data(array, num_elements, sum);
+                    }
+                    else {
+                        return false;
+                    }
+
                 }
             }
 
@@ -119,11 +151,13 @@ bool streaming_mode(const std::string &data_path, int rank,
 }
 
 bool batch_mode(const std::string &data_path,
-                int rank, const std::unordered_map<int, std::unordered_map<std::string, std::pair<int, int>>>& conf) {
+                int rank, const std::unordered_map<int, std::unordered_map<std::string, std::pair<int, int>>>& conf,
+                bool concurrency) {
     std::string dir_name;
     std::string file_name_prefix;
     std::string file_name;
     int sum = 0, num_elements = 0, k = 0;
+    bool res;
     for (auto &pair : conf) {
         for (auto& pair2 : pair.second) {
             num_elements += pair2.second.first * pair2.second.second;
@@ -141,10 +175,22 @@ bool batch_mode(const std::string &data_path,
                 file_name_prefix = dir_name + "/file_" + std::to_string(i);
                 file_name = file_name_prefix + "_writer_" + std::to_string(writer_rank) +  ".txt";
                 //std::cout << "reader " << rank << "reading file: " << file_name << std::endl;
-                if (read_from_file(array + k, num_elements_dir, file_name, rank))
-                    k += num_elements_dir;
-                else
-                    --i;
+                if (concurrency) {
+                    res = read_from_file_with_lock(array + k, num_elements_dir, file_name, rank);
+                    if (res)
+                        k += num_elements_dir;
+                    else
+                        --i;
+                }
+                else {
+                    if (read_from_file(array + k, num_elements_dir, file_name, rank)) {
+                        k += num_elements_dir;
+                    }
+                    else {
+                        return false;
+                    }
+
+                }
 
             }
         }
@@ -158,15 +204,16 @@ bool batch_mode(const std::string &data_path,
 }
 
 bool abbr_mode(const std::string &data_path,
-               const std::string &file_path, int rank, int size, bool streaming) {
+               const std::string &file_path, int rank, int size,
+               bool streaming, bool concurrency) {
     std::unordered_map<int, std::unordered_map<std::string, std::pair<int, int>>> conf;
     bool res;
     if (read_conf_dir_file_reader(file_path, rank, size, conf)) {
         if (streaming) {
-            res = streaming_mode(data_path, rank, conf);
+            res = streaming_mode(data_path, rank, conf, concurrency);
         }
         else {
-            res = batch_mode(data_path, rank, conf);
+            res = batch_mode(data_path, rank, conf, concurrency);
         }
     }
     else {
@@ -179,8 +226,8 @@ bool abbr_mode(const std::string &data_path,
     int rank, size;
     bool res;
     MPI_Init(&argc, &argv);
-    if (argc != 5) {
-        std::cout << "input error: path where storing data, configuration file, mode flag and streaming flag needed" << std::endl;
+    if (argc != 6) {
+        std::cout << "input error: path where storing data, configuration file, mode option, streaming option, concurrency option needed" << std::endl;
         MPI_Finalize();
         return 1;
     }
@@ -188,13 +235,14 @@ bool abbr_mode(const std::string &data_path,
     const std::string file_path(argv[2]);
     const std::string mode_flag(argv[3]);
     const std::string streaming_flag(argv[4]);
+    const std::string concurrent_opt(argv[5]);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     if (mode_flag == "details") {
         res = details_mode(file_path, rank, size);
     }
     else {
-        res = abbr_mode(data_path, file_path, rank, size, streaming_flag == "streaming");
+        res = abbr_mode(data_path, file_path, rank, size, streaming_flag == "streaming", concurrent_opt == "concurrency");
     }
 
     MPI_Finalize();
